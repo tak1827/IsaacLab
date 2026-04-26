@@ -246,7 +246,7 @@ class RewardsCfg:
     # Phase-aligned contact pattern
     gait_phase_contact = RewTerm(
         func=mdp.gait_phase_contact,
-        weight=0.5,
+        weight=0.0,
         params={
             "command_name": "base_velocity",
             "sensor_cfg": SceneEntityCfg("contact_forces"),
@@ -258,7 +258,7 @@ class RewardsCfg:
     # Foot clearance during swing
     foot_clearance = RewTerm(
         func=mdp.foot_clearance,
-        weight=0.2,
+        weight=0.0,
         params={
             "foot_names": ".*FOOT",
             "target_height": 0.08,  # ~8cm human-like
@@ -268,7 +268,7 @@ class RewardsCfg:
     # Straight knee during stance
     stance_knee_extension = RewTerm(
         func=mdp.stance_knee_extension,
-        weight=0.2,
+        weight=0.0,
         params={
             "knee_cfg": SceneEntityCfg("robot", joint_names=[".*left_knee_joint", ".*right_knee_joint"]),
             "foot_sensor_cfg": SceneEntityCfg(
@@ -289,7 +289,7 @@ class RewardsCfg:
     # Encourage alternating single-leg contact and flight phases.
     contact_pattern_reward = RewTerm(
         func=mdp.contact_pattern_reward,
-        weight=0.3,
+        weight=0.0,
         params={
             "foot_sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
@@ -302,7 +302,7 @@ class RewardsCfg:
     # Reward strong vertical and forward velocity during push-off.
     push_off_velocity_reward = RewTerm(
         func=mdp.push_off_velocity_reward,
-        weight=0.3,
+        weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg("robot"),
             "foot_sensor_cfg": SceneEntityCfg(
@@ -317,7 +317,7 @@ class RewardsCfg:
     # Penalize prolonged stance to promote dynamic running
     short_contact_reward = RewTerm(
         func=mdp.short_contact_reward,
-        weight=0.2,
+        weight=0.0,
         params={
             "foot_sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
@@ -331,7 +331,7 @@ class RewardsCfg:
     # Ensure the robot lifts its feet sufficiently during the swing phase to prevent tripping and dragging
     feet_swing_height_penalty = RewTerm(
         func=mdp.feet_swing_height_penalty,
-        weight=0.2,
+        weight=0.0,
         params={
             "foot_sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
@@ -348,7 +348,7 @@ class RewardsCfg:
     # - Arm Symmetry and Coordination
     arm_leg_momentum_balance = RewTerm(
         func=mdp.arm_leg_momentum_balance,
-        weight=5.0,
+        weight=0.0,
         params={
             "robot_cfg": SceneEntityCfg("robot"),
             "left_arm_cfg": SceneEntityCfg(
