@@ -1,0 +1,183 @@
+from collections.abc import Sequence
+from enum import IntEnum
+
+import torch
+from isaaclab.envs import ManagerBasedRLEnv
+from isaaclab.managers import SceneEntityCfg
+
+
+class GaitID(IntEnum):
+    STAND = 0
+    WALK = 1
+    WALK_TO_STAND = 2
+    RUN = 3
+    RUN_TO_WALK = 4
+
+
+NUM_GAITS = len(GaitID)
+
+
+class GaitManager:
+    def __init__(self, num_envs: int, device):
+        self.gait_id = torch.full((num_envs,), GaitID.WALK, dtype=torch.long, device=device)
+
+        self.w2s_timer = torch.zeros(num_envs, device=device)
+        self.r2w_timer = torch.zeros(num_envs, device=device)
+
+    def update(
+        self,
+        v_cmd: torch.Tensor,
+        base_lin_vel: torch.Tensor,
+        left_contact: torch.Tensor,
+        right_contact: torch.Tensor,
+        dt: float,
+        leg_length: float,
+        phase: int,
+    ):
+        cmd_speed = torch.norm(v_cmd[:, :2], dim=-1)
+        actual_speed = torch.norm(base_lin_vel[:, :2], dim=-1)
+
+        froude = actual_speed**2 / (9.81 * leg_length)
+
+        double_support = left_contact & right_contact
+
+        prev = self.gait_id.clone()
+
+        # -------------------------
+        # Phase 1: WALK ONLY
+        # -------------------------
+        if phase == 1:
+            self.gait_id[:] = GaitID.WALK
+            self.w2s_timer[:] = 0.0
+            self.r2w_timer[:] = 0.0
+            return self.gait_id
+
+        # =========================
+        # WALK → W2S
+        # =========================
+        enter_w2s = (cmd_speed < 0.1) & (prev == GaitID.WALK)
+        self.gait_id[enter_w2s] = GaitID.WALK_TO_STAND
+        self.w2s_timer[enter_w2s] = 0.0
+
+        # -------------------------
+        # W2S state
+        # -------------------------
+        in_w2s = self.gait_id == GaitID.WALK_TO_STAND
+
+        # ⛔ only accumulate when stable
+        stable_w2s = (cmd_speed < 0.1) & double_support
+
+        self.w2s_timer[in_w2s & stable_w2s] += dt
+
+        # reset timer if unstable
+        unstable_w2s = in_w2s & (~stable_w2s)
+        self.w2s_timer[unstable_w2s] = 0.0
+
+        # transition
+        to_stand = in_w2s & (self.w2s_timer > 1.5)
+        self.gait_id[to_stand] = GaitID.STAND
+
+        # cancel transition
+        cancel_w2s = in_w2s & (cmd_speed >= 0.1)
+        self.gait_id[cancel_w2s] = GaitID.WALK
+
+        # =========================
+        # WALK → RUN (intent + actual)
+        # =========================
+        enter_run = (froude > 0.5) & (prev == GaitID.WALK)
+        self.gait_id[enter_run] = GaitID.RUN
+
+        # =========================
+        # RUN → R2W
+        # =========================
+        enter_r2w = (cmd_speed < 0.5) & (prev == GaitID.RUN)
+        self.gait_id[enter_r2w] = GaitID.RUN_TO_WALK
+        self.r2w_timer[enter_r2w] = 0.0
+
+        # -------------------------
+        # R2W state
+        # -------------------------
+        in_r2w = self.gait_id == GaitID.RUN_TO_WALK
+
+        # stable decay = slow + NOT flying
+        stable_r2w = (actual_speed < 0.5) & (~double_support)
+
+        self.r2w_timer[in_r2w & stable_r2w] += dt
+
+        # reset if instability
+        unstable_r2w = in_r2w & (~stable_r2w)
+        self.r2w_timer[unstable_r2w] = 0.0
+
+        # transition
+        to_walk = in_r2w & (self.r2w_timer > 2.5)
+        self.gait_id[to_walk] = GaitID.WALK
+
+        # cancel if re-accelerate
+        cancel_r2w = in_r2w & (froude > 0.5)
+        self.gait_id[cancel_r2w] = GaitID.RUN
+
+        return self.gait_id
+
+    def reset(self, env_ids: Sequence[int] | torch.Tensor):
+        self.gait_id[env_ids] = GaitID.WALK
+        self.w2s_timer[env_ids] = 0.0
+        self.r2w_timer[env_ids] = 0.0
+
+
+def gait_onehot_obs(env):
+    return torch.nn.functional.one_hot(
+        env.current_gait_id, num_classes=5
+    ).float()
+
+
+class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
+    """Task-specific RL env with gait state management."""
+
+    def __init__(self, cfg, render_mode=None, **kwargs):
+        super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
+        self.gait_manager = GaitManager(self.num_envs, self.device)
+        self.current_gait_id = torch.full(
+            (self.num_envs,), GaitID.WALK,
+            dtype=torch.long,
+            device=self.device
+        )
+        self.curriculum_phase = 1
+
+        foot_cfg = SceneEntityCfg("contact_forces", body_names=self.cfg.foot_body_names)
+        foot_cfg.resolve(self.scene)
+        foot_ids = foot_cfg.body_ids
+        self.left_foot_id = foot_ids[0]
+        self.right_foot_id = foot_ids[1]
+        self.contact_sensor = self.scene.sensors["contact_forces"]
+        self.leg_length = cfg.leg_length
+
+    def _reset_idx(self, env_ids: Sequence[int]):
+        super()._reset_idx(env_ids)
+        self.gait_manager.reset(env_ids)
+        self.current_gait_id[env_ids] = GaitID.WALK
+
+    def step(self, actions):
+        obs, rew, done, info = super().step(actions)
+
+        # ---- velocity ----
+        base_lin_vel = self.scene["robot"].data.root_lin_vel_b
+
+        # ---- contact ----
+        net_contact_forces = self.contact_sensor.data.net_forces_w_history[:, -1]
+        left_contact = net_contact_forces[:, self.left_foot_id, 2] > 5.0
+        right_contact = net_contact_forces[:, self.right_foot_id, 2] > 5.0
+
+        # ---- command ----
+        v_cmd = self.command_manager.get_command("base_velocity")
+
+        self.current_gait_id = self.gait_manager.update(
+            v_cmd=v_cmd,
+            base_lin_vel=base_lin_vel,
+            left_contact=left_contact,
+            right_contact=right_contact,
+            dt=self.step_dt,
+            leg_length=self.leg_length,
+            phase=self.curriculum_phase,
+        )
+
+        return obs, rew, done, info

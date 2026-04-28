@@ -15,6 +15,9 @@ class G1FlatEnvCfg(G1RoughEnvCfg):
         # post init of parent
         super().__post_init__()
 
+        self.leg_length = 0.6
+        self.foot_body_names = ".*_ankle_roll_link"
+
         # change terrain to flat
         self.scene.terrain.terrain_type = "plane"
         self.scene.terrain.terrain_generator = None
