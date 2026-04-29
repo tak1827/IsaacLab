@@ -1,11 +1,14 @@
 import math
+from dataclasses import dataclass
 
 from isaaclab.utils import configclass
 from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
+from isaaclab_rl.rsl_rl import RslRlPpoActorCriticRecurrentCfg
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import RewardsCfg
 
+from .agents.rsl_rl_ppo_cfg import G1FlatPPORunnerCfg
 from .flat_env_cfg import G1FlatEnvCfg
 
 
@@ -346,4 +349,23 @@ class G1FlatEnvGaitRewardsCfg(RewardsCfg):
             "cycle_time": 0.8,
             "target_gait_id": 1,
         },
+    )
+
+@dataclass
+class G1FlatPPORunnerGaitCfg(G1FlatPPORunnerCfg):
+    experiment_name = "g1_flat_gait"
+    num_steps_per_env = 48 # Increased. 24 steps(0.5s) are too short for LSTM to learn transitions
+    save_interval = 200
+
+    policy = RslRlPpoActorCriticRecurrentCfg(
+        init_noise_std=1.0,
+        actor_obs_normalization=False,
+        critic_obs_normalization=False,
+        actor_hidden_dims=[512, 256, 128],
+        critic_hidden_dims=[512, 256, 128],
+        activation="elu",
+        # --- Add these LSTM parameters ---
+        rnn_type="lstm",
+        rnn_hidden_dim=512, # Size of the LSTM hidden state
+        rnn_num_layers=1,   # Number of stacked LSTM layers
     )
