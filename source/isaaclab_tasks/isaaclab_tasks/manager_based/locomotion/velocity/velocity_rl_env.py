@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from enum import IntEnum
 
+import math
 import torch
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
@@ -141,7 +142,11 @@ class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
             dtype=torch.long,
             device=self.device
         )
+        # Phase 1: Walking only
+        # Phase 2: Standing and Walk to Stand (W2S)
+        # Phase 3: Running and Run-to-Walk (R2W)
         self.curriculum_phase = 1
+        self._last_curriculum_phase = -1
 
         foot_cfg = SceneEntityCfg("contact_forces", body_names=self.cfg.foot_body_names)
         foot_cfg.resolve(self.scene)
@@ -150,6 +155,39 @@ class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
         self.right_foot_id = foot_ids[1]
         self.contact_sensor = self.scene.sensors["contact_forces"]
         self.leg_length = cfg.leg_length
+        self._apply_command_curriculum(force=True)
+
+    def _apply_command_curriculum(self, force: bool = False):
+        if not force and self.curriculum_phase == self._last_curriculum_phase:
+            return
+
+        term = self.command_manager.get_term("base_velocity")
+        cfg = term.cfg
+
+        if self.curriculum_phase == 1:
+            cfg.resampling_time_range = (10.0, 10.0)
+            cfg.rel_standing_envs = 0.02
+            cfg.ranges.lin_vel_x = (-1.0, 1.0)
+            cfg.ranges.lin_vel_y = (-0.5, 0.5)
+            cfg.ranges.ang_vel_z = (-1.0, 1.0)
+            cfg.ranges.heading = (-math.pi, math.pi)
+        elif self.curriculum_phase == 2:
+            cfg.resampling_time_range = (5.0, 10.0)
+            cfg.rel_standing_envs = 0.2
+            cfg.ranges.lin_vel_x = (-1.0, 1.0)
+            cfg.ranges.lin_vel_y = (-0.5, 0.5)
+            cfg.ranges.ang_vel_z = (-1.0, 1.0)
+            cfg.ranges.heading = (-math.pi, math.pi)
+        else:
+            cfg.resampling_time_range = (10.0, 10.0)
+            cfg.rel_standing_envs = 0.1
+            cfg.ranges.lin_vel_x = (0.0, 4.0)
+            cfg.ranges.lin_vel_y = (-1.0, 1.0)
+            cfg.ranges.ang_vel_z = (-1.0, 1.0)
+            cfg.ranges.heading = (-math.pi, math.pi)
+
+        term.time_left[:] = 0.0  # Force immediate command resampling so new phase settings take effect now.
+        self._last_curriculum_phase = self.curriculum_phase
 
     def _reset_idx(self, env_ids: Sequence[int]):
         super()._reset_idx(env_ids)
@@ -158,6 +196,14 @@ class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
 
     def step(self, actions):
         obs, rew, done, info = super().step(actions)
+
+        # if self.common_step_counter > 2_000_000:
+        #     self.curriculum_phase = 3
+        # elif self.common_step_counter > 1_000_000:
+        #     self.curriculum_phase = 2
+        # else:
+        #     self.curriculum_phase = 1
+        # self._apply_command_curriculum()
 
         # ---- velocity ----
         base_lin_vel = self.scene["robot"].data.root_lin_vel_b
