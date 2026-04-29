@@ -23,7 +23,7 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
         self.rewards = G1FlatEnvGaitRewardsCfg()
         self.phase_command_curriculum = {
             1: {
-                "resampling_time_range": (10.0, 10.0),
+                "resampling_time_range": (2.0, 5.0),
                 "rel_standing_envs": 0.02,
                 "lin_vel_x": (-1.0, 1.0),
                 "lin_vel_y": (-0.5, 0.5),
@@ -31,15 +31,15 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
                 "heading": (-math.pi, math.pi),
             },
             2: {
-                "resampling_time_range": (5.0, 10.0),
-                "rel_standing_envs": 0.2,
+                "resampling_time_range": (2.0, 5.0),
+                "rel_standing_envs": 0.3,
                 "lin_vel_x": (-1.0, 1.0),
                 "lin_vel_y": (-0.5, 0.5),
                 "ang_vel_z": (-1.0, 1.0),
                 "heading": (-math.pi, math.pi),
             },
             3: {
-                "resampling_time_range": (10.0, 10.0),
+                "resampling_time_range": (2.0, 5.0),
                 "rel_standing_envs": 0.1,
                 "lin_vel_x": (0.0, 4.0),
                 "lin_vel_y": (-1.0, 1.0),
@@ -76,7 +76,7 @@ class G1FlatEnvGaitRewardsCfg(RewardsCfg):
     # --------------- Target Gait ID: 0 (Standing) ---------------
     contact_pattern_reward = RewTerm(
         func=mdp.contact_pattern_reward,
-        weight=2.0,
+        weight=3.0,
         params={
             "foot_sensor_cfg": SceneEntityCfg(
                 "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
