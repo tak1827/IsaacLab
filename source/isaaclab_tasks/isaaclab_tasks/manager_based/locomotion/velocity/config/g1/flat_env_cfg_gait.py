@@ -19,8 +19,9 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
     curriculum_phase: int = 1
 
     def __post_init__(self):
+        if self.rewards is None:
+            self.rewards = G1FlatEnvGaitRewardsCfg()
         super().__post_init__()
-        self.rewards = G1FlatEnvGaitRewardsCfg()
         self.phase_command_curriculum = {
             1: {
                 "resampling_time_range": (2.0, 5.0),
