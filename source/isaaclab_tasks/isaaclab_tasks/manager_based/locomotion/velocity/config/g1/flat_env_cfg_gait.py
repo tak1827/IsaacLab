@@ -5,10 +5,10 @@ from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
 from isaaclab_rl.rsl_rl import RslRlPpoActorCriticRecurrentCfg
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
-from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import RewardsCfg
 
 from .agents.rsl_rl_ppo_cfg import G1FlatPPORunnerCfg
 from .flat_env_cfg import G1FlatEnvCfg
+from .rough_env_cfg import G1Rewards
 
 
 @configclass
@@ -71,7 +71,7 @@ class G1FlatEnvGaitCfg_PLAY(G1FlatEnvGaitCfg):
 #   Reference: https://arxiv.org/pdf/2505.20619
 # =========================================================
 @configclass
-class G1FlatEnvGaitRewardsCfg(RewardsCfg):
+class G1FlatEnvGaitRewardsCfg(G1Rewards):
     """Gait-oriented rewards for flat G1 training."""
 
     # --------------- Target Gait ID: 0 (Standing) ---------------

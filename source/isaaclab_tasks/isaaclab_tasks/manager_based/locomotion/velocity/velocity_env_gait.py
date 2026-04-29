@@ -125,6 +125,9 @@ class GaitManager:
 
 
 def gait_onehot_obs(env):
+    # This term can be queried during manager construction before __init__ finishes.
+    # if not hasattr(env, "current_gait_id"):
+    #     env.current_gait_id = torch.full((env.num_envs,), GaitID.WALK, dtype=torch.long, device=env.device)
     return torch.nn.functional.one_hot(
         env.current_gait_id, num_classes=5
     ).float()
@@ -134,13 +137,9 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
     """Task-specific RL gait env with gait state management."""
 
     def __init__(self, cfg, render_mode=None, **kwargs):
+        self.current_gait_id = torch.full((self.num_envs,), GaitID.WALK, dtype=torch.long, device=self.device)
         super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
         self.gait_manager = GaitManager(self.num_envs, self.device)
-        self.current_gait_id = torch.full(
-            (self.num_envs,), GaitID.WALK,
-            dtype=torch.long,
-            device=self.device
-        )
         # Phase 1: Walking only
         # Phase 2: Standing and Walk to Stand (W2S)
         # Phase 3: Running and Run-to-Walk (R2W)
