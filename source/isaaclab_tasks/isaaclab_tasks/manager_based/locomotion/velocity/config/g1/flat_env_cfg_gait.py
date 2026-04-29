@@ -1,5 +1,4 @@
 import math
-from dataclasses import dataclass
 
 from isaaclab.utils import configclass
 from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
@@ -351,13 +350,12 @@ class G1FlatEnvGaitRewardsCfg(RewardsCfg):
         },
     )
 
-@dataclass
+@configclass
 class G1FlatPPORunnerGaitCfg(G1FlatPPORunnerCfg):
     def __post_init__(self):
         super().__post_init__()
         self.experiment_name = "g1_flat_gait"
-        # Increased. 24 steps (0.5s) are too short for LSTM to learn transitions.
-        self.num_steps_per_env = 48
+        self.num_steps_per_env = 48 # Increased. 24 steps (0.5s) are too short for LSTM to learn transitions.
         self.save_interval = 200
         self.policy = RslRlPpoActorCriticRecurrentCfg(
             init_noise_std=1.0,
