@@ -274,7 +274,7 @@ def base_stability_standing(
 
     # ---- upright ----
     # only x,y tilt matters
-    gravity_xy = asset.data.projected_gravity[:, :2]
+    gravity_xy = asset.data.projected_gravity_b[:, :2]
     upright_error = torch.sum(gravity_xy**2, dim=1)
 
     # ---- combine (still simple) ----
@@ -372,6 +372,7 @@ def feet_swing_height_penalty(
     target_gait_id: int = 1,
 ) -> torch.Tensor:
     """Encourage sufficient foot clearance during swing."""
+    asset = env.scene["robot"]
     sensor: ContactSensor = env.scene.sensors[foot_sensor_cfg.name]
 
     # --- contact force (N, F)
@@ -382,7 +383,9 @@ def feet_swing_height_penalty(
     swing = 1.0 - torch.clamp(foot_force / (foot_force + 10.0), 0.0, 1.0)
 
     # --- foot height (world)
-    foot_pos = sensor.data.body_pos_w[:, foot_sensor_cfg.body_ids, :]
+    # Contact sensors provide forces but not body poses. Resolve matching bodies on the robot asset.
+    foot_body_ids, _ = asset.find_bodies(foot_sensor_cfg.body_names, preserve_order=foot_sensor_cfg.preserve_order)
+    foot_pos = asset.data.body_pos_w[:, foot_body_ids, :]
     foot_height = foot_pos[..., 2]
 
     # --- terrain height
