@@ -166,10 +166,11 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         phase_cfgs = getattr(self.cfg, "phase_command_curriculum", None)
         if phase_cfgs is None:
             raise ValueError("Missing `phase_command_curriculum` in env cfg.")
-        if self.curriculum_phase not in phase_cfgs:
+        phase_key = str(self.curriculum_phase)
+        if phase_key not in phase_cfgs:
             raise ValueError(f"Missing command curriculum for phase {self.curriculum_phase}.")
 
-        phase_cfg = phase_cfgs[self.curriculum_phase]
+        phase_cfg = phase_cfgs[phase_key]
         cfg.resampling_time_range = phase_cfg["resampling_time_range"]
         cfg.rel_standing_envs = phase_cfg["rel_standing_envs"]
         cfg.ranges.lin_vel_x = phase_cfg["lin_vel_x"]

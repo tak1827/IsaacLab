@@ -23,7 +23,7 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
             self.rewards = G1FlatEnvGaitRewardsCfg()
         super().__post_init__()
         self.phase_command_curriculum = {
-            1: {
+            "1": {
                 "resampling_time_range": (2.0, 5.0),
                 "rel_standing_envs": 0.02,
                 "lin_vel_x": (-1.0, 1.0),
@@ -31,7 +31,7 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
                 "ang_vel_z": (-1.0, 1.0),
                 "heading": (-math.pi, math.pi),
             },
-            2: {
+            "2": {
                 "resampling_time_range": (2.0, 5.0),
                 "rel_standing_envs": 0.3,
                 "lin_vel_x": (-1.0, 1.0),
@@ -39,7 +39,7 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
                 "ang_vel_z": (-1.0, 1.0),
                 "heading": (-math.pi, math.pi),
             },
-            3: {
+            "3": {
                 "resampling_time_range": (2.0, 5.0),
                 "rel_standing_envs": 0.1,
                 "lin_vel_x": (0.0, 4.0),
