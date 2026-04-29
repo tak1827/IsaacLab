@@ -13,7 +13,7 @@ from . import agents
 
 gym.register(
     id="Isaac-Velocity-Rough-G1-v0",
-    entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_rl_env:VelocityManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.rough_env_cfg:G1RoughEnvCfg",
@@ -25,7 +25,7 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Rough-G1-Play-v0",
-    entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_rl_env:VelocityManagerBasedRLEnv",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.rough_env_cfg:G1RoughEnvCfg_PLAY",
@@ -36,7 +36,7 @@ gym.register(
 
 
 gym.register(
-    id="Isaac-Velocity-Flat-G1-v0",
+    id="Isaac-Velocity-Flat-G1-v1",
     entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_gait:VelocityManagerBasedRLGaitEnv",
     disable_env_checker=True,
     kwargs={
@@ -48,7 +48,7 @@ gym.register(
 
 
 gym.register(
-    id="Isaac-Velocity-Flat-G1-Play-v0",
+    id="Isaac-Velocity-Flat-G1-Play-v1",
     entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_gait:VelocityManagerBasedRLGaitEnv",
     disable_env_checker=True,
     kwargs={
