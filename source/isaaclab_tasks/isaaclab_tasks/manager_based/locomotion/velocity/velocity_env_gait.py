@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 from enum import IntEnum
 
-import math
 import torch
 from isaaclab.envs import ManagerBasedRLEnv
 from isaaclab.managers import SceneEntityCfg
@@ -131,8 +130,8 @@ def gait_onehot_obs(env):
     ).float()
 
 
-class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
-    """Task-specific RL env with gait state management."""
+class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
+    """Task-specific RL gait env with gait state management."""
 
     def __init__(self, cfg, render_mode=None, **kwargs):
         super().__init__(cfg=cfg, render_mode=render_mode, **kwargs)
@@ -145,7 +144,7 @@ class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
         # Phase 1: Walking only
         # Phase 2: Standing and Walk to Stand (W2S)
         # Phase 3: Running and Run-to-Walk (R2W)
-        self.curriculum_phase = 1
+        self.curriculum_phase = getattr(cfg, "curriculum_phase", 1)
         self._last_curriculum_phase = -1
 
         foot_cfg = SceneEntityCfg("contact_forces", body_names=self.cfg.foot_body_names)
@@ -164,27 +163,19 @@ class VelocityManagerBasedRLEnv(ManagerBasedRLEnv):
         term = self.command_manager.get_term("base_velocity")
         cfg = term.cfg
 
-        if self.curriculum_phase == 1:
-            cfg.resampling_time_range = (10.0, 10.0)
-            cfg.rel_standing_envs = 0.02
-            cfg.ranges.lin_vel_x = (-1.0, 1.0)
-            cfg.ranges.lin_vel_y = (-0.5, 0.5)
-            cfg.ranges.ang_vel_z = (-1.0, 1.0)
-            cfg.ranges.heading = (-math.pi, math.pi)
-        elif self.curriculum_phase == 2:
-            cfg.resampling_time_range = (5.0, 10.0)
-            cfg.rel_standing_envs = 0.2
-            cfg.ranges.lin_vel_x = (-1.0, 1.0)
-            cfg.ranges.lin_vel_y = (-0.5, 0.5)
-            cfg.ranges.ang_vel_z = (-1.0, 1.0)
-            cfg.ranges.heading = (-math.pi, math.pi)
-        else:
-            cfg.resampling_time_range = (10.0, 10.0)
-            cfg.rel_standing_envs = 0.1
-            cfg.ranges.lin_vel_x = (0.0, 4.0)
-            cfg.ranges.lin_vel_y = (-1.0, 1.0)
-            cfg.ranges.ang_vel_z = (-1.0, 1.0)
-            cfg.ranges.heading = (-math.pi, math.pi)
+        phase_cfgs = getattr(self.cfg, "phase_command_curriculum", None)
+        if phase_cfgs is None:
+            raise ValueError("Missing `phase_command_curriculum` in env cfg.")
+        if self.curriculum_phase not in phase_cfgs:
+            raise ValueError(f"Missing command curriculum for phase {self.curriculum_phase}.")
+
+        phase_cfg = phase_cfgs[self.curriculum_phase]
+        cfg.resampling_time_range = phase_cfg["resampling_time_range"]
+        cfg.rel_standing_envs = phase_cfg["rel_standing_envs"]
+        cfg.ranges.lin_vel_x = phase_cfg["lin_vel_x"]
+        cfg.ranges.lin_vel_y = phase_cfg["lin_vel_y"]
+        cfg.ranges.ang_vel_z = phase_cfg["ang_vel_z"]
+        cfg.ranges.heading = phase_cfg["heading"]
 
         term.time_left[:] = 0.0  # Force immediate command resampling so new phase settings take effect now.
         self._last_curriculum_phase = self.curriculum_phase

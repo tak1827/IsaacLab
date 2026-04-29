@@ -37,10 +37,10 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Flat-G1-v0",
-    entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_rl_env:VelocityManagerBasedRLEnv",
+    entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_gait:VelocityManagerBasedRLGaitEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.flat_env_cfg:G1FlatEnvCfg",
+        "env_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatEnvGaitCfg",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1FlatPPORunnerCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
     },
@@ -49,10 +49,10 @@ gym.register(
 
 gym.register(
     id="Isaac-Velocity-Flat-G1-Play-v0",
-    entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_rl_env:VelocityManagerBasedRLEnv",
+    entry_point="isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_gait:VelocityManagerBasedRLGaitEnv",
     disable_env_checker=True,
     kwargs={
-        "env_cfg_entry_point": f"{__name__}.flat_env_cfg:G1FlatEnvCfg_PLAY",
+        "env_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatEnvGaitCfg_PLAY",
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1FlatPPORunnerCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
     },

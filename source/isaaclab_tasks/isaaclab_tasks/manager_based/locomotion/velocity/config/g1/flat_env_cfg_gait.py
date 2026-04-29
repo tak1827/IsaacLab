@@ -1,0 +1,349 @@
+import math
+
+from isaaclab.utils import configclass
+from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
+
+import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import RewardsCfg
+
+from .flat_env_cfg import G1FlatEnvCfg
+
+
+@configclass
+class G1FlatEnvGaitCfg(G1FlatEnvCfg):
+    """Placeholder config for gait-specific flat G1 training."""
+
+    rewards: "G1FlatEnvGaitRewardsCfg" = None
+    curriculum_phase: int = 1
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.rewards = G1FlatEnvGaitRewardsCfg()
+        self.phase_command_curriculum = {
+            1: {
+                "resampling_time_range": (10.0, 10.0),
+                "rel_standing_envs": 0.02,
+                "lin_vel_x": (-1.0, 1.0),
+                "lin_vel_y": (-0.5, 0.5),
+                "ang_vel_z": (-1.0, 1.0),
+                "heading": (-math.pi, math.pi),
+            },
+            2: {
+                "resampling_time_range": (5.0, 10.0),
+                "rel_standing_envs": 0.2,
+                "lin_vel_x": (-1.0, 1.0),
+                "lin_vel_y": (-0.5, 0.5),
+                "ang_vel_z": (-1.0, 1.0),
+                "heading": (-math.pi, math.pi),
+            },
+            3: {
+                "resampling_time_range": (10.0, 10.0),
+                "rel_standing_envs": 0.1,
+                "lin_vel_x": (0.0, 4.0),
+                "lin_vel_y": (-1.0, 1.0),
+                "ang_vel_z": (-1.0, 1.0),
+                "heading": (-math.pi, math.pi),
+            },
+        }
+
+
+@configclass
+class G1FlatEnvGaitCfg_PLAY(G1FlatEnvGaitCfg):
+    def __post_init__(self) -> None:
+        # post init of parent
+        super().__post_init__()
+
+        # make a smaller scene for play
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        # disable randomization for play
+        self.observations.policy.enable_corruption = False
+        # remove random pushing
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
+
+
+# =========================================================
+# 🧠 G1-style rewards
+#   Reference: https://arxiv.org/pdf/2505.20619
+# =========================================================
+@configclass
+class G1FlatEnvGaitRewardsCfg(RewardsCfg):
+    """Gait-oriented rewards for flat G1 training."""
+
+    # --------------- Target Gait ID: 0 (Standing) ---------------
+    contact_pattern_reward = RewTerm(
+        func=mdp.contact_pattern_reward,
+        weight=2.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_gait_id": 0,
+        },
+    )
+    base_stability_standing = RewTerm(
+        func=mdp.base_stability_standing,
+        weight=2.0,
+        params={
+            "std_base": 0.25,
+            "std_joint": 0.05,
+            "target_gait_id": 0,
+        },
+    )
+    stance_knee_extension = RewTerm(
+        func=mdp.stance_knee_extension,
+        weight=1.0,
+        params={
+            "knee_cfg": SceneEntityCfg("robot", joint_names=[".*left_knee_joint", ".*right_knee_joint"]),
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target": 0.12,
+            "scale": 5.0,
+            "target_gait_id": 0,
+        },
+    )
+
+
+    # --------------- Target Gait ID: 1 (Walking) ---------------
+    contact_pattern_reward = RewTerm(
+        func=mdp.contact_pattern_reward,
+        weight=1.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_gait_id": 1,
+        },
+    )
+    feet_swing_height_penalty = RewTerm(
+        func=mdp.feet_swing_height_penalty,
+        weight=2.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_height": 0.06,
+            "scale": 10.0,
+            "target_gait_id": 1,
+        },
+    )
+    stance_knee_extension = RewTerm(
+        func=mdp.stance_knee_extension,
+        weight=1.0,
+        params={
+            "knee_cfg": SceneEntityCfg("robot", joint_names=[".*left_knee_joint", ".*right_knee_joint"]),
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target": 0.18,
+            "scale": 8.0,
+            "target_gait_id": 1,
+        },
+    )
+    arm_leg_momentum_balance = RewTerm(
+        func=mdp.arm_leg_momentum_balance,
+        weight=0.5,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "left_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "left_shoulder_pitch_link",
+                    "left_shoulder_roll_link",
+                    "left_shoulder_yaw_link",
+                    "left_elbow_link",
+                ],
+            ),
+            "right_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "right_shoulder_pitch_link",
+                    "right_shoulder_roll_link",
+                    "right_shoulder_yaw_link",
+                    "right_elbow_link",
+                ],
+            ),
+            "target_gait_id": 1,
+        },
+    )
+
+
+    # --------------- Target Gait ID: 2 (Walk to Stand) ---------------
+    contact_pattern_reward = RewTerm(
+        func=mdp.contact_pattern_reward,
+        weight=1.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_gait_id": 2,
+        },
+    )
+    feet_swing_height_penalty = RewTerm(
+        func=mdp.feet_swing_height_penalty,
+        weight=1.5,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_height": 0.05,
+            "scale": 5.0,
+            "target_gait_id": 2,
+        },
+    )
+    stance_knee_extension = RewTerm(
+        func=mdp.stance_knee_extension,
+        weight=1.0,
+        params={
+            "knee_cfg": SceneEntityCfg("robot", joint_names=[".*left_knee_joint", ".*right_knee_joint"]),
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target": 0.14,
+            "scale": 5.0,
+            "target_gait_id": 2,
+        },
+    )
+
+
+    # --------------- Target Gait ID: 3 (Running) ---------------
+    contact_pattern_reward = RewTerm(
+        func=mdp.contact_pattern_reward,
+        weight=1.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_gait_id": 3,
+        },
+    )
+    feet_swing_height_penalty = RewTerm(
+        func=mdp.feet_swing_height_penalty,
+        weight=2.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_height": 0.1,
+            "scale": 15.0,
+            "target_gait_id": 3,
+        },
+    )
+    push_off_velocity_reward = RewTerm(
+        func=mdp.push_off_velocity_reward,
+        weight=0.5,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "command_name": "base_velocity",
+            "scale": 1.0,
+            "target_gait_id": 3,
+        },
+    )
+    short_contact_reward = RewTerm(
+        func=mdp.short_contact_reward,
+        weight=0.2,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "max_steps": 15,
+            "scale": 1.0,
+            "target_gait_id": 3,
+        },
+    )
+    arm_leg_momentum_balance = RewTerm(
+        func=mdp.arm_leg_momentum_balance,
+        weight=2.0,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "left_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "left_shoulder_pitch_link",
+                    "left_shoulder_roll_link",
+                    "left_shoulder_yaw_link",
+                    "left_elbow_link",
+                ],
+            ),
+            "right_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "right_shoulder_pitch_link",
+                    "right_shoulder_roll_link",
+                    "right_shoulder_yaw_link",
+                    "right_elbow_link",
+                ],
+            ),
+            "target_gait_id": 3,
+        },
+    )
+
+    # --------------- Target Gait ID: 4 (Run to Walk) ---------------
+    contact_pattern_reward = RewTerm(
+        func=mdp.contact_pattern_reward,
+        weight=1.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_gait_id": 4,
+        },
+    )
+    feet_swing_height_penalty = RewTerm(
+        func=mdp.feet_swing_height_penalty,
+        weight=2.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_height": 0.08,
+            "scale": 13.0,
+            "target_gait_id": 4,
+        },
+    )
+    arm_leg_momentum_balance = RewTerm(
+        func=mdp.arm_leg_momentum_balance,
+        weight=1.5,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "left_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "left_shoulder_pitch_link",
+                    "left_shoulder_roll_link",
+                    "left_shoulder_yaw_link",
+                    "left_elbow_link",
+                ],
+            ),
+            "right_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "right_shoulder_pitch_link",
+                    "right_shoulder_roll_link",
+                    "right_shoulder_yaw_link",
+                    "right_elbow_link",
+                ],
+            ),
+            "target_gait_id": 4,
+        },
+    )
+
+    # --------------- Unused Rewards ---------------
+
+    gait_phase_contact = RewTerm(
+        func=mdp.gait_phase_contact,
+        weight=0.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces"),
+            "left_foot": ".*left_ankle_roll_link",
+            "right_foot": ".*right_ankle_roll_link",
+            "cycle_time": 0.8,
+            "target_gait_id": 1,
+        },
+    )

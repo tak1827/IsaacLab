@@ -119,6 +119,7 @@ def stand_still_joint_deviation_l1(
     # Penalize motion when command is nearly zero.
     return mdp.joint_deviation_l1(env, asset_cfg) * (torch.norm(command[:, :2], dim=1) < command_threshold)
 
+# Phase-aligned contact pattern
 def gait_phase_contact(
     env,
     left_foot: str,
@@ -162,6 +163,7 @@ def gait_phase_contact(
     return reward * (speed > 0.1) * gait_mask
 
 
+# Straight knee during stance
 def stance_knee_extension(
     env,
     knee_cfg: SceneEntityCfg,
@@ -200,6 +202,10 @@ def stance_knee_extension(
     return torch.exp(-scale * avg_error) * gait_mask
 
 
+# Contact Pattern
+# Standing: Encourage consistent double-foot support for static balance.
+# Walking: Encourage alternating single-leg contact and flight phases.
+# Running: Encourage flight phases.
 def contact_pattern_reward(
     env,
     foot_sensor_cfg: SceneEntityCfg,
@@ -243,7 +249,8 @@ def contact_pattern_reward(
 
     return reward * gait_mask
 
-
+# Base Stability:
+# Penalize base and joint motion to maintain upright posture.
 def base_stability_standing(
     env,
     std_base: float = 0.25,
@@ -279,6 +286,8 @@ def base_stability_standing(
     return reward * gait_mask
 
 
+# Push-Off Dynamics
+# Reward strong vertical and forward velocity during push-off.
 def push_off_velocity_reward(
     env,
     asset_cfg: SceneEntityCfg,
@@ -313,6 +322,8 @@ def push_off_velocity_reward(
     return proj_vel * push_off_strength * scale * gait_mask
 
 
+# Short Contact
+# Penalize prolonged stance to promote dynamic running
 def short_contact_reward(
     env,
     foot_sensor_cfg: SceneEntityCfg,
@@ -351,6 +362,8 @@ def short_contact_reward(
     return torch.exp(-scale * penalty) * gait_mask
 
 
+# Feet Swing Height Penalty
+# Ensure the robot lifts its feet sufficiently during the swing phase to prevent tripping and dragging
 def feet_swing_height_penalty(
     env,
     foot_sensor_cfg: SceneEntityCfg,
@@ -385,6 +398,11 @@ def feet_swing_height_penalty(
     return torch.exp(-scale * torch.sum(penalty, dim=1)) * gait_mask
 
 
+# Arm–leg momentum balance
+# Penalizes residual whole-body angular momentum, particularly in the yaw (vertical) direction.
+# Encourages anti-phase yaw swing, where the arms move in opposition to the legs to cancel out leg-induced rotation
+# - Whole-body Momentum Minimization
+# - Arm Symmetry and Coordination
 def arm_leg_momentum_balance(
     env,
     robot_cfg: SceneEntityCfg,
