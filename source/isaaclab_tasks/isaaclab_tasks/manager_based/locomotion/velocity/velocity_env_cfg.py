@@ -240,6 +240,156 @@ class RewardsCfg:
     track_ang_vel_z_exp = RewTerm(
         func=mdp.track_ang_vel_z_exp, weight=0.5, params={"command_name": "base_velocity", "std": math.sqrt(0.25)}
     )
+
+    # =========================================================
+    # 🧠 G1-style rewards
+    #   Reference: https://arxiv.org/pdf/2505.20619
+    # =========================================================
+
+    # --------------- Common Rewards ---------------
+
+    # Contact Pattern
+    # Standing: Encourage consistent double-foot support for static balance.
+    # Walking: Encourage alternating single-leg contact and flight phases.
+    # Running: Encourage flight phases.
+    contact_pattern_reward = RewTerm(
+        func=mdp.contact_pattern_reward,
+        weight=0.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_gait_id": 0,
+        },
+    )
+
+    # --------------- Standing Rewards ---------------
+
+    # Base Stability:
+    # Penalize base and joint motion to maintain upright posture.
+    base_stability_standing = RewTerm(
+        func=mdp.base_stability_standing,
+        weight=2.5,
+        params={
+            "std_base": 0.25,
+            "std_joint": 0.05,
+            "target_gait_id": 0,
+        },
+    )
+
+
+    # --------------- Walking Rewards ---------------
+
+    # Phase-aligned contact pattern
+    gait_phase_contact = RewTerm(
+        func=mdp.gait_phase_contact,
+        weight=0.0,
+        params={
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces"),
+            "left_foot": ".*left_ankle_roll_link",
+            "right_foot": ".*right_ankle_roll_link",
+            "cycle_time": 0.8,   # seconds (tune)
+            "target_gait_id": 1,
+        },
+    )
+
+    # Straight knee during stance
+    stance_knee_extension = RewTerm(
+        func=mdp.stance_knee_extension,
+        weight=0.0,
+        params={
+            "knee_cfg": SceneEntityCfg("robot", joint_names=[".*left_knee_joint", ".*right_knee_joint"]),
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            # G1 flat walking: favor moderate knee extension during stance without forcing lockout.
+            "target": 0.18,
+            "scale": 8.0,
+            "target_gait_id": 1,
+        },
+    )
+
+    # --------------- Running Rewards ---------------
+
+    # Push-Off Dynamics
+    # Reward strong vertical and forward velocity during push-off.
+    push_off_velocity_reward = RewTerm(
+        func=mdp.push_off_velocity_reward,
+        weight=0.0,
+        params={
+            "asset_cfg": SceneEntityCfg("robot"),
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "command_name": "base_velocity",
+            "scale": 1.0,
+            "target_gait_id": 3,
+        },
+    )
+
+    # Short Contact
+    # Penalize prolonged stance to promote dynamic running
+    short_contact_reward = RewTerm(
+        func=mdp.short_contact_reward,
+        weight=0.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "max_steps": 15,
+            "scale": 1.0,
+            "target_gait_id": 3,
+        },
+    )
+
+    # Feet Swing Height Penalty
+    # Ensure the robot lifts its feet sufficiently during the swing phase to prevent tripping and dragging
+    feet_swing_height_penalty = RewTerm(
+        func=mdp.feet_swing_height_penalty,
+        weight=0.0,
+        params={
+            "foot_sensor_cfg": SceneEntityCfg(
+                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+            ),
+            "target_height": 0.1,
+            "scale": 20.0,
+            "target_gait_id": 3,
+        },
+    )
+
+    # Arm–leg momentum balance
+    # Penalizes residual whole-body angular momentum, particularly in the yaw (vertical) direction.
+    # Encourages anti-phase yaw swing, where the arms move in opposition to the legs to cancel out leg-induced rotation
+    # - Whole-body Momentum Minimization
+    # - Arm Symmetry and Coordination
+    arm_leg_momentum_balance = RewTerm(
+        func=mdp.arm_leg_momentum_balance,
+        weight=0.0,
+        params={
+            "robot_cfg": SceneEntityCfg("robot"),
+            "left_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "left_shoulder_pitch_link",
+                    "left_shoulder_roll_link",
+                    "left_shoulder_yaw_link",
+                    "left_elbow_link",
+                ],
+            ),
+            "right_arm_cfg": SceneEntityCfg(
+                "robot",
+                body_names=[
+                    "right_shoulder_pitch_link",
+                    "right_shoulder_roll_link",
+                    "right_shoulder_yaw_link",
+                    "right_elbow_link",
+                ],
+            ),
+            "target_gait_id": 3,
+        },
+    )
+
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
