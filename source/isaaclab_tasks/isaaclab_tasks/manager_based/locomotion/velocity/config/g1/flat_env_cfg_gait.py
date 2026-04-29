@@ -353,19 +353,20 @@ class G1FlatEnvGaitRewardsCfg(RewardsCfg):
 
 @dataclass
 class G1FlatPPORunnerGaitCfg(G1FlatPPORunnerCfg):
-    experiment_name = "g1_flat_gait"
-    num_steps_per_env = 48 # Increased. 24 steps(0.5s) are too short for LSTM to learn transitions
-    save_interval = 200
-
-    policy = RslRlPpoActorCriticRecurrentCfg(
-        init_noise_std=1.0,
-        actor_obs_normalization=False,
-        critic_obs_normalization=False,
-        actor_hidden_dims=[512, 256, 128],
-        critic_hidden_dims=[512, 256, 128],
-        activation="elu",
-        # --- Add these LSTM parameters ---
-        rnn_type="lstm",
-        rnn_hidden_dim=512, # Size of the LSTM hidden state
-        rnn_num_layers=1,   # Number of stacked LSTM layers
-    )
+    def __post_init__(self):
+        super().__post_init__()
+        self.experiment_name = "g1_flat_gait"
+        # Increased. 24 steps (0.5s) are too short for LSTM to learn transitions.
+        self.num_steps_per_env = 48
+        self.save_interval = 200
+        self.policy = RslRlPpoActorCriticRecurrentCfg(
+            init_noise_std=1.0,
+            actor_obs_normalization=False,
+            critic_obs_normalization=False,
+            actor_hidden_dims=[512, 256, 128],
+            critic_hidden_dims=[512, 256, 128],
+            activation="elu",
+            rnn_type="lstm",
+            rnn_hidden_dim=512, # Size of the LSTM hidden state.
+            rnn_num_layers=1,   # Number of stacked LSTM layers.
+        )
