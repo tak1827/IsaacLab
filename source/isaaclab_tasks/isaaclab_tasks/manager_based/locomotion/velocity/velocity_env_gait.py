@@ -186,7 +186,7 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         self.current_gait_id[env_ids] = GaitID.WALK
 
     def step(self, actions):
-        obs, rew, done, info = super().step(actions)
+        obs, rew, terminated, truncated, info = super().step(actions)
 
         # if self.common_step_counter > 2_000_000:
         #     self.curriculum_phase = 3
@@ -217,4 +217,4 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
             phase=self.curriculum_phase,
         )
 
-        return obs, rew, done, info
+        return obs, rew, terminated, truncated, info
