@@ -388,9 +388,15 @@ def feet_swing_height_penalty(
     foot_pos = asset.data.body_pos_w[:, foot_body_ids, :]
     foot_height = foot_pos[..., 2]
 
-    # --- terrain height
+    # --- terrain-relative foot height
+    # `TerrainImporter` does not expose `get_heights` in this setup.
+    # For flat-plane tasks, ground is z=0; keep a guarded path for terrains that implement height queries.
     foot_xy = foot_pos[..., :2].reshape(-1, 2)
-    terrain_h = env.scene.terrain.get_heights(foot_xy).reshape(foot_height.shape)
+    get_heights_fn = getattr(env.scene.terrain, "get_heights", None)
+    if callable(get_heights_fn):
+        terrain_h = get_heights_fn(foot_xy).reshape(foot_height.shape)
+    else:
+        terrain_h = torch.zeros_like(foot_height)
     rel_height = foot_height - terrain_h
 
     # --- penalty only when below target (smooth)
