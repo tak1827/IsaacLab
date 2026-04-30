@@ -442,7 +442,7 @@ def arm_leg_momentum_balance(
     def momentum_z(body_ids) -> torch.Tensor:
         r = body_pos[:, body_ids, :] - com.unsqueeze(1)
         v = body_vel[:, body_ids, :]
-        m = masses[:, body_ids, :]
+        m = masses[:, body_ids, 0]
         # r x (m v) -> z = x*vy - y*vx
         return torch.sum(m * (r[..., 0] * v[..., 1] - r[..., 1] * v[..., 0]), dim=1)
 
