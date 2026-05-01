@@ -75,7 +75,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
     """Gait-oriented rewards for flat G1 training."""
 
     # --------------- Target Gait ID: 0 (Standing) ---------------
-    contact_pattern_reward = RewTerm(
+    contact_pattern_reward_standing = RewTerm(
         func=mdp.contact_pattern_reward,
         weight=3.0,
         params={
@@ -94,7 +94,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 0,
         },
     )
-    stance_knee_extension = RewTerm(
+    stance_knee_extension_standing = RewTerm(
         func=mdp.stance_knee_extension,
         weight=1.0,
         params={
@@ -110,7 +110,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
 
 
     # --------------- Target Gait ID: 1 (Walking) ---------------
-    contact_pattern_reward = RewTerm(
+    contact_pattern_reward_walking = RewTerm(
         func=mdp.contact_pattern_reward,
         weight=1.0,
         params={
@@ -120,7 +120,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 1,
         },
     )
-    feet_swing_height_penalty = RewTerm(
+    feet_swing_height_penalty_walking = RewTerm(
         func=mdp.feet_swing_height_penalty,
         weight=2.0,
         params={
@@ -132,7 +132,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 1,
         },
     )
-    stance_knee_extension = RewTerm(
+    stance_knee_extension_walking = RewTerm(
         func=mdp.stance_knee_extension,
         weight=1.0,
         params={
@@ -145,7 +145,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 1,
         },
     )
-    arm_leg_momentum_balance = RewTerm(
+    arm_leg_momentum_balance_walking = RewTerm(
         func=mdp.arm_leg_momentum_balance,
         weight=0.5,
         params={
@@ -176,7 +176,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
 
 
     # --------------- Target Gait ID: 2 (Walk to Stand) ---------------
-    contact_pattern_reward = RewTerm(
+    contact_pattern_reward_walk_to_stand = RewTerm(
         func=mdp.contact_pattern_reward,
         weight=1.0,
         params={
@@ -186,7 +186,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 2,
         },
     )
-    feet_swing_height_penalty = RewTerm(
+    feet_swing_height_penalty_walk_to_stand = RewTerm(
         func=mdp.feet_swing_height_penalty,
         weight=1.5,
         params={
@@ -198,7 +198,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 2,
         },
     )
-    stance_knee_extension = RewTerm(
+    stance_knee_extension_walk_to_stand = RewTerm(
         func=mdp.stance_knee_extension,
         weight=1.0,
         params={
@@ -214,7 +214,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
 
 
     # --------------- Target Gait ID: 3 (Running) ---------------
-    contact_pattern_reward = RewTerm(
+    contact_pattern_reward_running = RewTerm(
         func=mdp.contact_pattern_reward,
         weight=1.0,
         params={
@@ -224,7 +224,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 3,
         },
     )
-    feet_swing_height_penalty = RewTerm(
+    feet_swing_height_penalty_running = RewTerm(
         func=mdp.feet_swing_height_penalty,
         weight=2.0,
         params={
@@ -236,7 +236,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 3,
         },
     )
-    push_off_velocity_reward = RewTerm(
+    push_off_velocity_reward_running = RewTerm(
         func=mdp.push_off_velocity_reward,
         weight=0.5,
         params={
@@ -249,7 +249,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 3,
         },
     )
-    short_contact_reward = RewTerm(
+    short_contact_reward_running = RewTerm(
         func=mdp.short_contact_reward,
         weight=0.2,
         params={
@@ -261,7 +261,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 3,
         },
     )
-    arm_leg_momentum_balance = RewTerm(
+    arm_leg_momentum_balance_running = RewTerm(
         func=mdp.arm_leg_momentum_balance,
         weight=2.0,
         params={
@@ -291,7 +291,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
     )
 
     # --------------- Target Gait ID: 4 (Run to Walk) ---------------
-    contact_pattern_reward = RewTerm(
+    contact_pattern_reward_run_to_walk = RewTerm(
         func=mdp.contact_pattern_reward,
         weight=1.0,
         params={
@@ -301,7 +301,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 4,
         },
     )
-    feet_swing_height_penalty = RewTerm(
+    feet_swing_height_penalty_run_to_walk = RewTerm(
         func=mdp.feet_swing_height_penalty,
         weight=2.0,
         params={
@@ -313,7 +313,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 4,
         },
     )
-    arm_leg_momentum_balance = RewTerm(
+    arm_leg_momentum_balance_run_to_walk = RewTerm(
         func=mdp.arm_leg_momentum_balance,
         weight=1.5,
         params={
