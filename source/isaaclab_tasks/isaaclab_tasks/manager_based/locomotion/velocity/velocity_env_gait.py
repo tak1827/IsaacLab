@@ -200,9 +200,13 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         base_lin_vel = self.scene["robot"].data.root_lin_vel_b
 
         # ---- contact ----
-        net_contact_forces = self.contact_sensor.data.net_forces_w_history[:, -1]
-        left_contact = net_contact_forces[:, self.left_foot_id, 2] > 5.0
-        right_contact = net_contact_forces[:, self.right_foot_id, 2] > 5.0
+        # History dim: index 0 is most recent, -1 is oldest (see ContactSensorData docs).
+        net_contact_forces = self.contact_sensor.data.net_forces_w_history[:, 0]
+        # Use force magnitude like other MDP terms; relying on Fz-only misses contacts depending on normal sign.
+        left_f = torch.norm(net_contact_forces[:, self.left_foot_id, :], dim=-1)
+        right_f = torch.norm(net_contact_forces[:, self.right_foot_id, :], dim=-1)
+        left_contact = left_f > 5.0
+        right_contact = right_f > 5.0
 
         # ---- command ----
         v_cmd = self.command_manager.get_command("base_velocity")
