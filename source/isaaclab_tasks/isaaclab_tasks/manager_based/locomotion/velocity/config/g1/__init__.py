@@ -41,7 +41,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatEnvGaitCfg",
-        "rsl_rl_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatPPORunnerGaitCfg",
+        "rsl_rl_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatPPORunnerCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
     },
 )
@@ -53,7 +53,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatEnvGaitCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatPPORunnerGaitCfg",
+        "rsl_rl_cfg_entry_point": f"{__name__}.flat_env_cfg_gait:G1FlatPPORunnerCfg",
         "skrl_cfg_entry_point": f"{agents.__name__}:skrl_flat_ppo_cfg.yaml",
     },
 )
