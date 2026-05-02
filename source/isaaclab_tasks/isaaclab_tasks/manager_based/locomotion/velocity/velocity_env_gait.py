@@ -28,8 +28,8 @@ class GaitManager:
         self,
         v_cmd: torch.Tensor,
         base_lin_vel: torch.Tensor,
-        left_contact: torch.Tensor,
-        right_contact: torch.Tensor,
+        left_foot_force: torch.Tensor,
+        right_foot_force: torch.Tensor,
         dt: float,
         leg_length: float,
         phase: int,
@@ -37,9 +37,14 @@ class GaitManager:
         cmd_speed = torch.norm(v_cmd[:, :2], dim=-1)
         actual_speed = torch.norm(base_lin_vel[:, :2], dim=-1)
 
-        froude = actual_speed**2 / (9.81 * leg_length)
+        # froude = actual_speed**2 / (9.81 * leg_length)
 
-        double_support = left_contact & right_contact
+        # Match `mdp.stance_knee_extension`: soft stance weights from force norms.
+        # Hard binary left & right (e.g. F > 5N) fails for tiny simulation jitter, so `w2s_timer`
+        # never reaches 1.5s consecutive steps even while W2S knee rewards stay non-zero.
+        left_s = torch.clamp(left_foot_force / (left_foot_force + 10.0), 0.0, 1.0)
+        right_s = torch.clamp(right_foot_force / (right_foot_force + 10.0), 0.0, 1.0)
+        double_support = (left_s * right_s) > 0.04
 
         prev = self.gait_id.clone()
 
@@ -81,40 +86,40 @@ class GaitManager:
         cancel_w2s = in_w2s & (cmd_speed >= 0.1)
         self.gait_id[cancel_w2s] = GaitID.WALK
 
-        # =========================
-        # WALK → RUN (intent + actual)
-        # =========================
-        enter_run = (froude > 0.5) & (prev == GaitID.WALK)
-        self.gait_id[enter_run] = GaitID.RUN
+        # # =========================
+        # # WALK → RUN (intent + actual)
+        # # =========================
+        # enter_run = (froude > 0.5) & (prev == GaitID.WALK)
+        # self.gait_id[enter_run] = GaitID.RUN
 
-        # =========================
-        # RUN → R2W
-        # =========================
-        enter_r2w = (cmd_speed < 0.5) & (prev == GaitID.RUN)
-        self.gait_id[enter_r2w] = GaitID.RUN_TO_WALK
-        self.r2w_timer[enter_r2w] = 0.0
+        # # =========================
+        # # RUN → R2W
+        # # =========================
+        # enter_r2w = (cmd_speed < 0.5) & (prev == GaitID.RUN)
+        # self.gait_id[enter_r2w] = GaitID.RUN_TO_WALK
+        # self.r2w_timer[enter_r2w] = 0.0
 
-        # -------------------------
-        # R2W state
-        # -------------------------
-        in_r2w = self.gait_id == GaitID.RUN_TO_WALK
+        # # -------------------------
+        # # R2W state
+        # # -------------------------
+        # in_r2w = self.gait_id == GaitID.RUN_TO_WALK
 
-        # stable decay = slow + NOT flying
-        stable_r2w = (actual_speed < 0.5) & (~double_support)
+        # # stable decay = slow + NOT flying
+        # stable_r2w = (actual_speed < 0.5) & (~double_support)
 
-        self.r2w_timer[in_r2w & stable_r2w] += dt
+        # self.r2w_timer[in_r2w & stable_r2w] += dt
 
-        # reset if instability
-        unstable_r2w = in_r2w & (~stable_r2w)
-        self.r2w_timer[unstable_r2w] = 0.0
+        # # reset if instability
+        # unstable_r2w = in_r2w & (~stable_r2w)
+        # self.r2w_timer[unstable_r2w] = 0.0
 
-        # transition
-        to_walk = in_r2w & (self.r2w_timer > 2.5)
-        self.gait_id[to_walk] = GaitID.WALK
+        # # transition
+        # to_walk = in_r2w & (self.r2w_timer > 2.5)
+        # self.gait_id[to_walk] = GaitID.WALK
 
-        # cancel if re-accelerate
-        cancel_r2w = in_r2w & (froude > 0.5)
-        self.gait_id[cancel_r2w] = GaitID.RUN
+        # # cancel if re-accelerate
+        # cancel_r2w = in_r2w & (froude > 0.5)
+        # self.gait_id[cancel_r2w] = GaitID.RUN
 
         return self.gait_id
 
@@ -200,13 +205,10 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         base_lin_vel = self.scene["robot"].data.root_lin_vel_b
 
         # ---- contact ----
-        # History dim: index 0 is most recent, -1 is oldest (see ContactSensorData docs).
-        net_contact_forces = self.contact_sensor.data.net_forces_w_history[:, 0]
-        # Use force magnitude like other MDP terms; relying on Fz-only misses contacts depending on normal sign.
+        # Same buffer as stance MDP rewards (`net_forces_w`), not history slice timing.
+        net_contact_forces = self.contact_sensor.data.net_forces_w
         left_f = torch.norm(net_contact_forces[:, self.left_foot_id, :], dim=-1)
         right_f = torch.norm(net_contact_forces[:, self.right_foot_id, :], dim=-1)
-        left_contact = left_f > 5.0
-        right_contact = right_f > 5.0
 
         # ---- command ----
         v_cmd = self.command_manager.get_command("base_velocity")
@@ -214,8 +216,8 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         self.current_gait_id = self.gait_manager.update(
             v_cmd=v_cmd,
             base_lin_vel=base_lin_vel,
-            left_contact=left_contact,
-            right_contact=right_contact,
+            left_foot_force=left_f,
+            right_foot_force=right_f,
             dt=self.step_dt,
             leg_length=self.leg_length,
             phase=self.curriculum_phase,
