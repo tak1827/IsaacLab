@@ -28,8 +28,8 @@ class GaitManager:
         self,
         v_cmd: torch.Tensor,
         base_lin_vel: torch.Tensor,
-        left_foot_force: torch.Tensor,
-        right_foot_force: torch.Tensor,
+        left_foot_in_contact: torch.Tensor,
+        right_foot_in_contact: torch.Tensor,
         dt: float,
         leg_length: float,
         phase: int,
@@ -39,12 +39,11 @@ class GaitManager:
 
         # froude = actual_speed**2 / (9.81 * leg_length)
 
-        # Match `mdp.stance_knee_extension`: soft stance weights from force norms.
-        # Hard binary left & right (e.g. F > 5N) fails for tiny simulation jitter, so `w2s_timer`
-        # never reaches 1.5s consecutive steps even while W2S knee rewards stay non-zero.
-        left_s = torch.clamp(left_foot_force / (left_foot_force + 10.0), 0.0, 1.0)
-        right_s = torch.clamp(right_foot_force / (right_foot_force + 10.0), 0.0, 1.0)
-        double_support = (left_s * right_s) > 0.04
+        # True double support needs BOTH feet down the same step. With soft loads `left_s`/`right_s`
+        # from `net_forces_w`, that AND is often false (one foot ~0 for a frame) → `stable_w2s` breaks
+        # → timer resets → no STAND → gait-0 rewards look "always zero". Using `|` is easier but is
+        # "any foot contact", not double support. Prefer contact-time flags from the sensor instead.
+        double_support = left_foot_in_contact & right_foot_in_contact
 
         prev = self.gait_id.clone()
 
@@ -204,11 +203,12 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         # ---- velocity ----
         base_lin_vel = self.scene["robot"].data.root_lin_vel_b
 
-        # ---- contact ----
-        # Same buffer as stance MDP rewards (`net_forces_w`), not history slice timing.
-        net_contact_forces = self.contact_sensor.data.net_forces_w
-        left_f = torch.norm(net_contact_forces[:, self.left_foot_id, :], dim=-1)
-        right_f = torch.norm(net_contact_forces[:, self.right_foot_id, :], dim=-1)
+        # ---- contact (both feet down for gait FSM): `net_forces_w` rarely stays jointly >0 each step.
+        ct = self.contact_sensor.data.current_contact_time
+        if ct is None:
+            raise RuntimeError("Enable `track_air_time=True` on `contact_forces` for gait double-support.")
+        left_down = ct[:, self.left_foot_id] > 0.0
+        right_down = ct[:, self.right_foot_id] > 0.0
 
         # ---- command ----
         v_cmd = self.command_manager.get_command("base_velocity")
@@ -216,8 +216,8 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         self.current_gait_id = self.gait_manager.update(
             v_cmd=v_cmd,
             base_lin_vel=base_lin_vel,
-            left_foot_force=left_f,
-            right_foot_force=right_f,
+            left_foot_in_contact=left_down,
+            right_foot_in_contact=right_down,
             dt=self.step_dt,
             leg_length=self.leg_length,
             phase=self.curriculum_phase,
