@@ -3,7 +3,6 @@ from enum import IntEnum
 
 import torch
 from isaaclab.envs import ManagerBasedRLEnv
-from isaaclab.managers import SceneEntityCfg
 
 
 class GaitID(IntEnum):
@@ -28,8 +27,6 @@ class GaitManager:
         self,
         v_cmd: torch.Tensor,
         base_lin_vel: torch.Tensor,
-        left_foot_in_contact: torch.Tensor,
-        right_foot_in_contact: torch.Tensor,
         dt: float,
         leg_length: float,
         phase: int,
@@ -38,12 +35,6 @@ class GaitManager:
         actual_speed = torch.norm(base_lin_vel[:, :2], dim=-1)
 
         # froude = actual_speed**2 / (9.81 * leg_length)
-
-        # True double support needs BOTH feet down the same step. With soft loads `left_s`/`right_s`
-        # from `net_forces_w`, that AND is often false (one foot ~0 for a frame) → `stable_w2s` breaks
-        # → timer resets → no STAND → gait-0 rewards look "always zero". Using `|` is easier but is
-        # "any foot contact", not double support. Prefer contact-time flags from the sensor instead.
-        double_support = left_foot_in_contact & right_foot_in_contact
 
         prev = self.gait_id.clone()
 
@@ -68,12 +59,11 @@ class GaitManager:
         # -------------------------
         in_w2s = self.gait_id == GaitID.WALK_TO_STAND
 
-        # ⛔ only accumulate when stable
-        stable_w2s = (cmd_speed < 0.1) & double_support
+        # W2S stability: command-only.
+        stable_w2s = cmd_speed < 0.1
 
         self.w2s_timer[in_w2s & stable_w2s] += dt
 
-        # reset timer if unstable
         unstable_w2s = in_w2s & (~stable_w2s)
         self.w2s_timer[unstable_w2s] = 0.0
 
@@ -103,8 +93,8 @@ class GaitManager:
         # # -------------------------
         # in_r2w = self.gait_id == GaitID.RUN_TO_WALK
 
-        # # stable decay = slow + NOT flying
-        # stable_r2w = (actual_speed < 0.5) & (~double_support)
+        # # stable decay = slow + optional contact gate if re-enabled
+        # stable_r2w = actual_speed < 0.5
 
         # self.r2w_timer[in_r2w & stable_r2w] += dt
 
@@ -150,12 +140,6 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         self.curriculum_phase = getattr(cfg, "curriculum_phase", 1)
         self._last_curriculum_phase = -1
 
-        foot_cfg = SceneEntityCfg("contact_forces", body_names=self.cfg.foot_body_names)
-        foot_cfg.resolve(self.scene)
-        foot_ids = foot_cfg.body_ids
-        self.left_foot_id = foot_ids[0]
-        self.right_foot_id = foot_ids[1]
-        self.contact_sensor = self.scene.sensors["contact_forces"]
         self.leg_length = cfg.leg_length
         self._apply_command_curriculum(force=True)
 
@@ -203,21 +187,12 @@ class VelocityManagerBasedRLGaitEnv(ManagerBasedRLEnv):
         # ---- velocity ----
         base_lin_vel = self.scene["robot"].data.root_lin_vel_b
 
-        # ---- contact (both feet down for gait FSM): `net_forces_w` rarely stays jointly >0 each step.
-        ct = self.contact_sensor.data.current_contact_time
-        if ct is None:
-            raise RuntimeError("Enable `track_air_time=True` on `contact_forces` for gait double-support.")
-        left_down = ct[:, self.left_foot_id] > 0.0
-        right_down = ct[:, self.right_foot_id] > 0.0
-
         # ---- command ----
         v_cmd = self.command_manager.get_command("base_velocity")
 
         self.current_gait_id = self.gait_manager.update(
             v_cmd=v_cmd,
             base_lin_vel=base_lin_vel,
-            left_foot_in_contact=left_down,
-            right_foot_in_contact=right_down,
             dt=self.step_dt,
             leg_length=self.leg_length,
             phase=self.curriculum_phase,
