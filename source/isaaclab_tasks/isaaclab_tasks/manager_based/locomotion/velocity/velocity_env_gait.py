@@ -33,8 +33,7 @@ class GaitManager:
     ):
         cmd_speed = torch.norm(v_cmd[:, :2], dim=-1)
         actual_speed = torch.norm(base_lin_vel[:, :2], dim=-1)
-
-        # froude = actual_speed**2 / (9.81 * leg_length)
+        froude = actual_speed.square() / (9.81 * leg_length)
 
         prev = self.gait_id.clone()
 
@@ -75,40 +74,40 @@ class GaitManager:
         cancel_w2s = in_w2s & (cmd_speed >= 0.1)
         self.gait_id[cancel_w2s] = GaitID.WALK
 
-        # # =========================
-        # # WALK → RUN (intent + actual)
-        # # =========================
-        # enter_run = (froude > 0.5) & (prev == GaitID.WALK)
-        # self.gait_id[enter_run] = GaitID.RUN
+        # =========================
+        # WALK → RUN (intent + actual)
+        # =========================
+        enter_run = (froude > 0.5) & (prev == GaitID.WALK)
+        self.gait_id[enter_run] = GaitID.RUN
 
-        # # =========================
-        # # RUN → R2W
-        # # =========================
-        # enter_r2w = (cmd_speed < 0.5) & (prev == GaitID.RUN)
-        # self.gait_id[enter_r2w] = GaitID.RUN_TO_WALK
-        # self.r2w_timer[enter_r2w] = 0.0
+        # =========================
+        # RUN → R2W
+        # =========================
+        enter_r2w = (cmd_speed < 0.5) & (prev == GaitID.RUN)
+        self.gait_id[enter_r2w] = GaitID.RUN_TO_WALK
+        self.r2w_timer[enter_r2w] = 0.0
 
-        # # -------------------------
-        # # R2W state
-        # # -------------------------
-        # in_r2w = self.gait_id == GaitID.RUN_TO_WALK
+        # -------------------------
+        # R2W state
+        # -------------------------
+        in_r2w = self.gait_id == GaitID.RUN_TO_WALK
 
-        # # stable decay = slow + optional contact gate if re-enabled
-        # stable_r2w = actual_speed < 0.5
+        # stable decay = slow + optional contact gate if re-enabled
+        stable_r2w = actual_speed < 0.5
 
-        # self.r2w_timer[in_r2w & stable_r2w] += dt
+        self.r2w_timer[in_r2w & stable_r2w] += dt
 
-        # # reset if instability
-        # unstable_r2w = in_r2w & (~stable_r2w)
-        # self.r2w_timer[unstable_r2w] = 0.0
+        # reset if instability
+        unstable_r2w = in_r2w & (~stable_r2w)
+        self.r2w_timer[unstable_r2w] = 0.0
 
-        # # transition
-        # to_walk = in_r2w & (self.r2w_timer > 2.5)
-        # self.gait_id[to_walk] = GaitID.WALK
+        # transition
+        to_walk = in_r2w & (self.r2w_timer > 2.5)
+        self.gait_id[to_walk] = GaitID.WALK
 
-        # # cancel if re-accelerate
-        # cancel_r2w = in_r2w & (froude > 0.5)
-        # self.gait_id[cancel_r2w] = GaitID.RUN
+        # cancel if re-accelerate
+        cancel_r2w = in_r2w & (froude > 0.5)
+        self.gait_id[cancel_r2w] = GaitID.RUN
 
         return self.gait_id
 
