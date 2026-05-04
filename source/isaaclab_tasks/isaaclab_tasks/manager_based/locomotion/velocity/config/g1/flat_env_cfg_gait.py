@@ -49,6 +49,9 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
             },
         }
 
+        # Rewards
+        self.rewards.joint_deviation_arms.weight = 0.0
+
 
 @configclass
 class G1FlatEnvGaitCfg_PLAY(G1FlatEnvGaitCfg):
@@ -107,6 +110,23 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 0,
         },
     )
+    s_joint_deviation_arms = RewTerm(
+        func=mdp.gait_joint_deviation_l1,
+        weight=-0.1,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_shoulder_pitch_joint",
+                    ".*_shoulder_roll_joint",
+                    ".*_shoulder_yaw_joint",
+                    ".*_elbow_pitch_joint",
+                    ".*_elbow_roll_joint",
+                ],
+            ),
+            "target_gait_id": 0,
+        },
+    )
 
 
     # --------------- Target Gait ID: 1 (Walking) ---------------
@@ -142,6 +162,23 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             ),
             "target": 0.18,
             "scale": 8.0,
+            "target_gait_id": 1,
+        },
+    )
+    w_joint_deviation_arms = RewTerm(
+        func=mdp.gait_joint_deviation_l1,
+        weight=-0.05,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_shoulder_pitch_joint",
+                    ".*_shoulder_roll_joint",
+                    ".*_shoulder_yaw_joint",
+                    ".*_elbow_pitch_joint",
+                    ".*_elbow_roll_joint",
+                ],
+            ),
             "target_gait_id": 1,
         },
     )
@@ -208,6 +245,23 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             ),
             "target": 0.14,
             "scale": 5.0,
+            "target_gait_id": 2,
+        },
+    )
+    w2s_joint_deviation_arms = RewTerm(
+        func=mdp.gait_joint_deviation_l1,
+        weight=-0.08,
+        params={
+            "asset_cfg": SceneEntityCfg(
+                "robot",
+                joint_names=[
+                    ".*_shoulder_pitch_joint",
+                    ".*_shoulder_roll_joint",
+                    ".*_shoulder_yaw_joint",
+                    ".*_elbow_pitch_joint",
+                    ".*_elbow_roll_joint",
+                ],
+            ),
             "target_gait_id": 2,
         },
     )

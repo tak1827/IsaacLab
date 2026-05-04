@@ -119,6 +119,17 @@ def stand_still_joint_deviation_l1(
     # Penalize motion when command is nearly zero.
     return mdp.joint_deviation_l1(env, asset_cfg) * (torch.norm(command[:, :2], dim=1) < command_threshold)
 
+
+def gait_joint_deviation_l1(
+    env,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+    target_gait_id: int = 1,
+) -> torch.Tensor:
+    """Penalize joint deviation only for a specific gait phase."""
+    gait_mask = (env.current_gait_id == target_gait_id).float()
+    return mdp.joint_deviation_l1(env, asset_cfg) * gait_mask
+
+
 # Phase-aligned contact pattern
 def gait_phase_contact(
     env,
