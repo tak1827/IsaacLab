@@ -42,7 +42,7 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
             "3": {
                 "resampling_time_range": (5.0, 10.0),
                 "rel_standing_envs": 0.1,
-                "lin_vel_x": (0.5, 4.0),
+                "lin_vel_x": (0.0, 3.0),
                 "lin_vel_y": (-0.5, 0.5),
                 "ang_vel_z": (-1.0, 1.0),
                 "heading": (-math.pi, math.pi),
