@@ -42,7 +42,7 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
             "3": {
                 "resampling_time_range": (5.0, 10.0),
                 "rel_standing_envs": 0.1,
-                "lin_vel_x": (0.0, 3.0),
+                "lin_vel_x": (0.0, 2.5),
                 "lin_vel_y": (-0.5, 0.5),
                 "ang_vel_z": (-1.0, 1.0),
                 "heading": (-math.pi, math.pi),
@@ -110,7 +110,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 0,
         },
     )
-    s_joint_deviation_arms = RewTerm(
+    s_joint_deviation_l1 = RewTerm(
         func=mdp.gait_joint_deviation_l1,
         weight=-0.1,
         params={
@@ -165,7 +165,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 1,
         },
     )
-    w_joint_deviation_arms = RewTerm(
+    w_joint_deviation_l1 = RewTerm(
         func=mdp.gait_joint_deviation_l1,
         weight=-0.05,
         params={
@@ -183,7 +183,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
         },
     )
     # w_arm_leg_momentum_balance = RewTerm(
-    #     func=mdp.arm_leg_momentum_balance,
+    #     func=mdp.arm_leg_momentum_penalty,
     #     weight=0.5,
     #     params={
     #         "robot_cfg": SceneEntityCfg("robot"),
@@ -248,7 +248,7 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
             "target_gait_id": 2,
         },
     )
-    w2s_joint_deviation_arms = RewTerm(
+    w2s_joint_deviation_l1 = RewTerm(
         func=mdp.gait_joint_deviation_l1,
         weight=-0.08,
         params={
@@ -278,31 +278,31 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
     #         "target_gait_id": 3,
     #     },
     # )
-    r_feet_swing_height_penalty = RewTerm(
-        func=mdp.feet_swing_height_penalty,
-        weight=0.1,
-        params={
-            "foot_sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
-            ),
-            "target_height": 0.1,
-            "scale": 15.0,
-            "target_gait_id": 3,
-        },
-    )
-    r_push_off_velocity_reward = RewTerm(
-        func=mdp.push_off_velocity_reward,
-        weight=0.2,
-        params={
-            "asset_cfg": SceneEntityCfg("robot"),
-            "foot_sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
-            ),
-            "command_name": "base_velocity",
-            "scale": 1.0,
-            "target_gait_id": 3,
-        },
-    )
+    # r_feet_swing_height_reward = RewTerm(
+    #     func=mdp.feet_swing_height_reward,
+    #     weight=0.1,
+    #     params={
+    #         "foot_sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+    #         ),
+    #         "target_height": 0.1,
+    #         "scale": 15.0,
+    #         "target_gait_id": 3,
+    #     },
+    # )
+    # r_push_off_velocity_reward = RewTerm(
+    #     func=mdp.push_off_velocity_reward,
+    #     weight=0.2,
+    #     params={
+    #         "asset_cfg": SceneEntityCfg("robot"),
+    #         "foot_sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+    #         ),
+    #         "command_name": "base_velocity",
+    #         "scale": 1.0,
+    #         "target_gait_id": 3,
+    #     },
+    # )
     # r_short_contact_reward = RewTerm(
     #     func=mdp.short_contact_reward,
     #     weight=0.2,
@@ -315,34 +315,51 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
     #         "target_gait_id": 3,
     #     },
     # )
-    r_arm_leg_momentum_balance = RewTerm(
-        func=mdp.arm_leg_momentum_balance,
-        weight=0.2,
+    r_joint_deviation_l1 = RewTerm(
+        func=mdp.gait_joint_deviation_l1,
+        weight=-0.02,
         params={
-            "robot_cfg": SceneEntityCfg("robot"),
-            "left_arm_cfg": SceneEntityCfg(
+            "asset_cfg": SceneEntityCfg(
                 "robot",
-                body_names=[
-                    "left_shoulder_pitch_link",
-                    "left_shoulder_roll_link",
-                    "left_shoulder_yaw_link",
-                    "left_elbow_pitch_link",
-                    "left_elbow_roll_link",
-                ],
-            ),
-            "right_arm_cfg": SceneEntityCfg(
-                "robot",
-                body_names=[
-                    "right_shoulder_pitch_link",
-                    "right_shoulder_roll_link",
-                    "right_shoulder_yaw_link",
-                    "right_elbow_pitch_link",
-                    "right_elbow_roll_link",
+                joint_names=[
+                    ".*_shoulder_pitch_joint",
+                    ".*_shoulder_roll_joint",
+                    ".*_shoulder_yaw_joint",
+                    ".*_elbow_pitch_joint",
+                    ".*_elbow_roll_joint",
                 ],
             ),
             "target_gait_id": 3,
         },
     )
+    # r_arm_leg_momentum_penalty = RewTerm(
+    #     func=mdp.arm_leg_momentum_penalty,
+    #     weight=0.2,
+    #     params={
+    #         "robot_cfg": SceneEntityCfg("robot"),
+    #         "left_arm_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "left_shoulder_pitch_link",
+    #                 "left_shoulder_roll_link",
+    #                 "left_shoulder_yaw_link",
+    #                 "left_elbow_pitch_link",
+    #                 "left_elbow_roll_link",
+    #             ],
+    #         ),
+    #         "right_arm_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "right_shoulder_pitch_link",
+    #                 "right_shoulder_roll_link",
+    #                 "right_shoulder_yaw_link",
+    #                 "right_elbow_pitch_link",
+    #                 "right_elbow_roll_link",
+    #             ],
+    #         ),
+    #         "target_gait_id": 3,
+    #     },
+    # )
 
     # --------------- Target Gait ID: 4 (Run to Walk) ---------------
     # r2w_contact_pattern_reward = RewTerm(
@@ -355,46 +372,63 @@ class G1FlatEnvGaitRewardsCfg(G1Rewards):
     #         "target_gait_id": 4,
     #     },
     # )
-    r2w_feet_swing_height_penalty = RewTerm(
-        func=mdp.feet_swing_height_penalty,
-        weight=0.1,
+    # r2w_feet_swing_height_reward = RewTerm(
+    #     func=mdp.feet_swing_height_reward,
+    #     weight=0.1,
+    #     params={
+    #         "foot_sensor_cfg": SceneEntityCfg(
+    #             "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
+    #         ),
+    #         "target_height": 0.08,
+    #         "scale": 13.0,
+    #         "target_gait_id": 4,
+    #     },
+    # )
+    r2w_joint_deviation_l1 = RewTerm(
+        func=mdp.gait_joint_deviation_l1,
+        weight=-0.03,
         params={
-            "foot_sensor_cfg": SceneEntityCfg(
-                "contact_forces", body_names=[".*left_ankle_roll_link", ".*right_ankle_roll_link"]
-            ),
-            "target_height": 0.08,
-            "scale": 13.0,
-            "target_gait_id": 4,
-        },
-    )
-    r2w_arm_leg_momentum_balance = RewTerm(
-        func=mdp.arm_leg_momentum_balance,
-        weight=0.2,
-        params={
-            "robot_cfg": SceneEntityCfg("robot"),
-            "left_arm_cfg": SceneEntityCfg(
+            "asset_cfg": SceneEntityCfg(
                 "robot",
-                body_names=[
-                    "left_shoulder_pitch_link",
-                    "left_shoulder_roll_link",
-                    "left_shoulder_yaw_link",
-                    "left_elbow_pitch_link",
-                    "left_elbow_roll_link",
-                ],
-            ),
-            "right_arm_cfg": SceneEntityCfg(
-                "robot",
-                body_names=[
-                    "right_shoulder_pitch_link",
-                    "right_shoulder_roll_link",
-                    "right_shoulder_yaw_link",
-                    "right_elbow_pitch_link",
-                    "right_elbow_roll_link",
+                joint_names=[
+                    ".*_shoulder_pitch_joint",
+                    ".*_shoulder_roll_joint",
+                    ".*_shoulder_yaw_joint",
+                    ".*_elbow_pitch_joint",
+                    ".*_elbow_roll_joint",
                 ],
             ),
             "target_gait_id": 4,
         },
     )
+    # r2w_arm_leg_momentum_penalty = RewTerm(
+    #     func=mdp.arm_leg_momentum_penalty,
+    #     weight=0.2,
+    #     params={
+    #         "robot_cfg": SceneEntityCfg("robot"),
+    #         "left_arm_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "left_shoulder_pitch_link",
+    #                 "left_shoulder_roll_link",
+    #                 "left_shoulder_yaw_link",
+    #                 "left_elbow_pitch_link",
+    #                 "left_elbow_roll_link",
+    #             ],
+    #         ),
+    #         "right_arm_cfg": SceneEntityCfg(
+    #             "robot",
+    #             body_names=[
+    #                 "right_shoulder_pitch_link",
+    #                 "right_shoulder_roll_link",
+    #                 "right_shoulder_yaw_link",
+    #                 "right_elbow_pitch_link",
+    #                 "right_elbow_roll_link",
+    #             ],
+    #         ),
+    #         "target_gait_id": 4,
+    #     },
+    # )
 
     # --------------- Unused Rewards ---------------
 
