@@ -1,6 +1,7 @@
 import math
 
 from isaaclab.utils import configclass
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
 from isaaclab_rl.rsl_rl import RslRlPpoActorCriticRecurrentCfg
 
@@ -85,24 +86,30 @@ class G1FlatEnvGaitCfg_PLAY(G1FlatEnvGaitCfg):
         self.events.push_robot = None
 
 
+# Recover None events from base config.
 @configclass
 class G1FlatEnvGaitEventCfg(EventCfg):
     """Gait-specific event configuration."""
-
-    add_base_mass = EventCfg.add_base_mass.replace(
+    add_base_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
             "mass_distribution_params": (0.9, 1.1),
             "operation": "scale",
         }
     )
-    base_com = EventCfg.base_com.replace(
+    base_com = EventTerm(
+        func=mdp.randomize_rigid_body_com,
+        mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
             "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.01, 0.01)},
         }
     )
-    push_robot = EventCfg.push_robot.replace(
+    push_robot = EventTerm(
+        func=mdp.push_by_setting_velocity,
+        mode="interval",
         interval_range_s=(12.0, 18.0),
         params={"velocity_range": {"x": (-0.2, 0.2), "y": (-0.2, 0.2)}},
     )
