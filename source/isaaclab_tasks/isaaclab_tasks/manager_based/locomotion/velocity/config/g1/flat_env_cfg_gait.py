@@ -1,12 +1,12 @@
 import math
 
 from isaaclab.utils import configclass
-from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
 from isaaclab_rl.rsl_rl import RslRlPpoActorCriticRecurrentCfg
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
 from isaaclab_assets import G1_CFG
+from isaaclab_tasks.manager_based.locomotion.velocity.velocity_env_cfg import EventCfg
 
 from .agents.rsl_rl_ppo_cfg import G1FlatPPORunnerCfg
 from .flat_env_cfg import G1FlatEnvCfg
@@ -18,11 +18,14 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
     """Placeholder config for gait-specific flat G1 training."""
 
     rewards: "G1FlatEnvGaitRewardsCfg" = None
-    curriculum_phase: int = 3
+    events: "G1FlatEnvGaitEventCfg" = None
+    curriculum_phase: int = 1
 
     def __post_init__(self):
         if self.rewards is None:
             self.rewards = G1FlatEnvGaitRewardsCfg()
+        if self.events is None:
+            self.events = G1FlatEnvGaitEventCfg()
         super().__post_init__()
 
         # Change from Minimal(`G1_MINIMAL_CFG`) to Full (`G1_CFG`) G1 robot.
@@ -31,35 +34,6 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
         # Friction randomization (highest priority): override default fixed ranges from base config.
         self.events.physics_material.params["static_friction_range"] = (0.8, 1.0)
         self.events.physics_material.params["dynamic_friction_range"] = (0.6, 0.9)
-
-        # Base mass randomization (recreated because rough config disables it).
-        self.events.add_base_mass = EventTerm(
-            func=mdp.randomize_rigid_body_mass,
-            mode="startup",
-            params={
-                "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-                "mass_distribution_params": (0.9, 1.1),
-                "operation": "scale",
-            },
-        )
-
-        # Base COM randomization (recreated because rough config disables it).
-        self.events.base_com = EventTerm(
-            func=mdp.randomize_rigid_body_com,
-            mode="startup",
-            params={
-                "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-                "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.01, 0.01)},
-            },
-        )
-
-        # Re-enable weak interval pushes for robustness.
-        self.events.push_robot = EventTerm(
-            func=mdp.push_by_setting_velocity,
-            mode="interval",
-            interval_range_s=(12.0, 18.0),
-            params={"velocity_range": {"x": (-0.2, 0.2), "y": (-0.2, 0.2)}},
-        )
 
         # Slight variation in initial joint positions for robustness to init error.
         self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
@@ -109,6 +83,29 @@ class G1FlatEnvGaitCfg_PLAY(G1FlatEnvGaitCfg):
         # remove random pushing
         self.events.base_external_force_torque = None
         self.events.push_robot = None
+
+
+@configclass
+class G1FlatEnvGaitEventCfg(EventCfg):
+    """Gait-specific event configuration."""
+
+    add_base_mass = EventCfg.add_base_mass.replace(
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "mass_distribution_params": (0.9, 1.1),
+            "operation": "scale",
+        }
+    )
+    base_com = EventCfg.base_com.replace(
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.01, 0.01)},
+        }
+    )
+    push_robot = EventCfg.push_robot.replace(
+        interval_range_s=(12.0, 18.0),
+        params={"velocity_range": {"x": (-0.2, 0.2), "y": (-0.2, 0.2)}},
+    )
 
 
 # =========================================================
