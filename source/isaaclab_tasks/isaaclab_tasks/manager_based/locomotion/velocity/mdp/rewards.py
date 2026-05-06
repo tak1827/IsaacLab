@@ -375,7 +375,7 @@ def short_contact_reward(
 
 # Feet Swing Height Penalty
 # Ensure the robot lifts its feet sufficiently during the swing phase to prevent tripping and dragging
-def feet_swing_height_penalty(
+def feet_swing_height_reward(
     env,
     foot_sensor_cfg: SceneEntityCfg,
     target_height: float = 0.1,
@@ -423,7 +423,7 @@ def feet_swing_height_penalty(
 # Encourages anti-phase yaw swing, where the arms move in opposition to the legs to cancel out leg-induced rotation
 # - Whole-body Momentum Minimization
 # - Arm Symmetry and Coordination
-def arm_leg_momentum_balance(
+def arm_leg_momentum_penalty(
     env,
     robot_cfg: SceneEntityCfg,
     left_arm_cfg: SceneEntityCfg,
