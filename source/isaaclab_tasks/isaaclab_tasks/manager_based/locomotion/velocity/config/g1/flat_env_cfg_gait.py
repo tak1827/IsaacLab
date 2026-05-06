@@ -1,10 +1,12 @@
 import math
 
 from isaaclab.utils import configclass
+from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import RewardTermCfg as RewTerm, SceneEntityCfg
 from isaaclab_rl.rsl_rl import RslRlPpoActorCriticRecurrentCfg
 
 import isaaclab_tasks.manager_based.locomotion.velocity.mdp as mdp
+from isaaclab_assets import G1_CFG
 
 from .agents.rsl_rl_ppo_cfg import G1FlatPPORunnerCfg
 from .flat_env_cfg import G1FlatEnvCfg
@@ -22,6 +24,46 @@ class G1FlatEnvGaitCfg(G1FlatEnvCfg):
         if self.rewards is None:
             self.rewards = G1FlatEnvGaitRewardsCfg()
         super().__post_init__()
+
+        # Change from Minimal(`G1_MINIMAL_CFG`) to Full (`G1_CFG`) G1 robot.
+        self.scene.robot = G1_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+
+        # Friction randomization (highest priority): override default fixed ranges from base config.
+        self.events.physics_material.params["static_friction_range"] = (0.8, 1.0)
+        self.events.physics_material.params["dynamic_friction_range"] = (0.6, 0.9)
+
+        # Base mass randomization (recreated because rough config disables it).
+        self.events.add_base_mass = EventTerm(
+            func=mdp.randomize_rigid_body_mass,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+                "mass_distribution_params": (0.9, 1.1),
+                "operation": "scale",
+            },
+        )
+
+        # Base COM randomization (recreated because rough config disables it).
+        self.events.base_com = EventTerm(
+            func=mdp.randomize_rigid_body_com,
+            mode="startup",
+            params={
+                "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+                "com_range": {"x": (-0.02, 0.02), "y": (-0.02, 0.02), "z": (-0.01, 0.01)},
+            },
+        )
+
+        # Re-enable weak interval pushes for robustness.
+        self.events.push_robot = EventTerm(
+            func=mdp.push_by_setting_velocity,
+            mode="interval",
+            interval_range_s=(12.0, 18.0),
+            params={"velocity_range": {"x": (-0.2, 0.2), "y": (-0.2, 0.2)}},
+        )
+
+        # Slight variation in initial joint positions for robustness to init error.
+        self.events.reset_robot_joints.params["position_range"] = (0.9, 1.1)
+
         self.phase_command_curriculum = {
             "1": {
                 "resampling_time_range": (10.0, 10.0),
