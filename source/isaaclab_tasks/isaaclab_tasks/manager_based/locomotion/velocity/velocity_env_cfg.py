@@ -138,7 +138,7 @@ class ObservationsCfg:
             noise=Unoise(n_min=-0.1, n_max=0.1),
             clip=(-1.0, 1.0),
         )
-        gait = ObsTerm(func=gait_onehot_obs)
+        # gait = ObsTerm(func=gait_onehot_obs)
 
         def __post_init__(self):
             self.enable_corruption = True
